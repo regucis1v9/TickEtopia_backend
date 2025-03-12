@@ -42,3 +42,7 @@ Route::post('/ticket/create', [TicketController::class, 'createTicket']);
 Route::get('/ticket/{ticketId}/download', [TicketController::class, 'generateTicket']);
 Route::post('/api/create-ticket', [TicketController::class, 'createTicketAfterPayment']);
 Route::post('/generate-ticket', [TicketController::class, 'createTicketAfterPayment']);
+
+Route::get('/test', function () {
+    return response()->json(['message' => 'Test API is working']);
+});

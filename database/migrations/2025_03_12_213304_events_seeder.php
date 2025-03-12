@@ -16,6 +16,7 @@ return new class extends Migration
                 'is_public' => true,
                 'organizer_id' => 1,
                 'image' => 'http://example.com/events/summer_festival.jpg',
+                'location' => 'New York City, USA', // Add this line
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -25,6 +26,7 @@ return new class extends Migration
                 'is_public' => true,
                 'organizer_id' => 2,
                 'image' => 'http://example.com/events/tech_conference.jpg',
+                'location' => 'San Francisco, USA', // Add this line
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -34,6 +36,7 @@ return new class extends Migration
                 'is_public' => true,
                 'organizer_id' => 3,
                 'image' => 'http://example.com/events/comedy_night.jpg',
+                'location' => 'Chicago, USA', // Add this line
                 'created_at' => now(),
                 'updated_at' => now(),
             ]
@@ -45,3 +48,4 @@ return new class extends Migration
         Schema::dropIfExists('events');
     }
 };
+

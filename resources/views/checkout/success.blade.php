@@ -7,41 +7,49 @@
     <title>Checkout Success | TickEtopia</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
-        // Set a delay to redirect the user after 10 seconds
         setTimeout(function () {
             window.location.href = "http://localhost:3000";
         }, 10000);
 
-        // This function will be used to make a request to the backend
-        function generateTicket(userId, eventId) {
-            // Send the data to the backend
-            fetch('http://127.0.0.1:8000/generate-ticket', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}' // CSRF token to protect the route
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    event_id: eventId
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Handle the response if ticket generation is successful
-                console.log('Ticket generated successfully', data);
-                window.location.href = data.pdf_url; // Redirect to the ticket PDF
-            })
-            .catch(error => {
-                console.error('Error generating ticket', error);
-            });
+        async function generateTicket() {
+            try {
+                const userId = localStorage.getItem('user_id'); 
+                const eventId = localStorage.getItem('event_id'); 
+
+                console.log("User ID from localStorage: ", userId);
+                console.log("Event ID from localStorage: ", eventId);
+
+                if (!userId || !eventId) {
+                    console.error('Missing userId or eventId');
+                    return;
+                }
+
+                const response = await fetch('http://127.0.0.1:8000/generate-ticket', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        event_id: eventId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.pdf_url) {
+                    console.log('Ticket generated:', data);
+                    window.location.href = data.pdf_url;
+                } else {
+                    console.error('Error response from server:', data);
+                }
+            } catch (error) {
+                console.error('Error generating ticket:', error);
+            }
         }
 
-        // Trigger ticket generation with dummy user_id and event_id (replace with actual values)
-        const userId = 123; // Replace with the actual user ID after payment
-        const eventId = 456; // Replace with the actual event ID from the payment data
-
-        generateTicket(userId, eventId);
+        generateTicket();
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -231,7 +239,7 @@
                 <p><i class="fas fa-clock"></i> Processing time: 1-2 minutes</p>
             </div>
             
-            <a href="http://localhost:3000" class="btn">Continue Shopping</a>
+            <a href="http://localhost:3000" class="btn">Back to TickEtopia</a>
             <p class="redirect-info">You will be redirected in 10 seconds...</p>
         </div>
         <div class="footer">

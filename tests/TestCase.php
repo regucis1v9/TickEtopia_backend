@@ -2,9 +2,18 @@
 
 namespace Tests;
 
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\DB;
 
-abstract class TestCase extends BaseTestCase
+class TestCase extends \Illuminate\Foundation\Testing\TestCase
 {
-    //
+    public function setUp(): void
+    {
+        parent::setUp();
+
+        // Enable foreign key support for SQLite
+        if (DB::getDriverName() === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = ON;');
+        }
+    }
 }
+

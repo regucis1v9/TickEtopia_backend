@@ -11,7 +11,6 @@ class Ticket extends Model
 
     protected $fillable = ['user_id', 'event_id', 'ticket_number', 'status_id'];
 
-    // Define relationships
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -24,16 +23,15 @@ class Ticket extends Model
 
     public function status()
     {
-        return $this->belongsTo(TicketStatus::class); // Assuming you have a TicketStatus model.
+        return $this->belongsTo(TicketStatus::class); 
     }
 
-    // Generate ticket number automatically
     public static function boot()
     {
         parent::boot();
 
         static::creating(function ($ticket) {
-            $ticket->ticket_number = strtoupper(str_random(10));  // Generate a random ticket number
+            $ticket->ticket_number = strtoupper(str_random(10)); 
         });
     }
 }

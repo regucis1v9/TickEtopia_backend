@@ -9,7 +9,7 @@
         "barryvdh/laravel-dompdf": "^3.1",
         "illuminate/filesystem": "*",
         "laravel/framework": "^11.9",
-        "laravel/sanctum": "^4.0",
+        "laravel/sanctum": "^4.1",
         "laravel/tinker": "^2.9",
         "resend/resend-php": "^0.15.1",
         "stripe/stripe-php": "^16.6"

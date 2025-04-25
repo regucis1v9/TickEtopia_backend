@@ -230,7 +230,7 @@
             </div>
             
             <div class="btn-group">
-                <a href="http://localhost:3000" class="btn">Return to Shop</a>
+                <a href="http://localhost:3000" class="btn">Back to TickEtopia</a>
             </div>
             <p class="redirect-info">You will be redirected to the shop in 10 seconds...</p>
         </div>

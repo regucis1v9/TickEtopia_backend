@@ -21,7 +21,7 @@ class VenueController extends Controller
                 'name' => 'required|string|max:255',
                 'address' => 'required|string|max:500',
                 'contact_email' => 'required|email|max:255',
-                'contact_phone' => 'sometimes|required|string|max:20|regex:/^\+?\d{1,15}$/',
+                'contact_phone' => 'sometimes|required|string|max:20|regex:/^\+?[0-9\s\-\(\)]+$/',
                 'capacity' => 'required|integer|min:1',
                 'notes' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
@@ -29,7 +29,7 @@ class VenueController extends Controller
 
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('venues', 'public');
-                $validatedData['image'] = "http://127.0.0.1:8000/storage/" . $imagePath;
+                $validatedData['image'] = "https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/" . $imagePath;
             }
 
             $venue = Venue::create($validatedData);
@@ -59,11 +59,11 @@ class VenueController extends Controller
 
         if ($request->hasFile('image')) {
             if ($venue->image) {
-                $oldImagePath = str_replace('http://127.0.0.1:8000/storage/', '', $venue->image);
+                $oldImagePath = str_replace('https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/', '', $venue->image);
                 Storage::disk('public')->delete($oldImagePath); 
             }
             $imagePath = $request->file('image')->store('venues', 'public');
-            $validated['image'] = "http://127.0.0.1:8000/storage/" . $imagePath; 
+            $validated['image'] = "https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/" . $imagePath; 
         }
 
         $venue->update($validated);
@@ -74,7 +74,7 @@ class VenueController extends Controller
     {
         $venue = Venue::findOrFail($id);
         if ($venue->image) {
-            $oldImagePath = str_replace('http://127.0.0.1:8000/storage/', '', $venue->image);
+            $oldImagePath = str_replace('https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/', '', $venue->image);
             Storage::disk('public')->delete($oldImagePath);
         }
         

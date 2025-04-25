@@ -17,4 +17,9 @@ class Organizer extends Model
         'organizer_address',
         'image',
     ];
+
+    public function events()
+    {
+        return $this->hasMany(Event::class);
+    }
 }

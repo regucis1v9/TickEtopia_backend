@@ -9,7 +9,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('venues', function (Blueprint $table) {
-            $table->id(); 
+            $table->id(); // This already creates the primary key
             $table->string('name'); 
             $table->string('address')->nullable(); 
             $table->string('contact_email')->nullable(); 
@@ -18,8 +18,6 @@ return new class extends Migration
             $table->text('notes')->nullable(); 
             $table->timestamps();  
             $table->string('image')->nullable(); 
-            
-            $table->primary('id');
         });
     }
 

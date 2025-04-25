@@ -20,15 +20,15 @@ class OrganizerController extends Controller
             $validatedData = $request->validate([
                 'organizer_name' => 'required|string|max:255',
                 'organizer_registration_number' => 'required|string|max:500',
-                'organizer_email' => 'required|email|max:255|unique:organizers',
-                'organizer_phone' => 'required|string|max:20',
+                'organizer_email' => 'required|email|max:255',
+                'organizer_phone' => 'sometimes|required|string|max:20|regex:/^\+?[0-9\s\-\(\)]+$/',
                 'organizer_address' => 'required|string|min:1',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             ]);
 
             if ($request->hasFile('image')) {
                 $imagePath = $request->file('image')->store('organizers', 'public'); 
-                $validatedData['image'] = "http://127.0.0.1:8000/storage/" . $imagePath; 
+                $validatedData['image'] = "https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/" . $imagePath; 
             }
 
             $organizer = Organizer::create($validatedData);
@@ -49,7 +49,7 @@ class OrganizerController extends Controller
         $validated = $request->validate([
             'organizer_name' => 'sometimes|required|string|max:255',
             'organizer_registration_number' => 'sometimes|required|string|max:500',
-            'organizer_email' => 'sometimes|required|email|max:255|unique:organizers,organizer_email,' . $id,
+            'organizer_email' => 'sometimes|required|email|max:255' . $id,
             'organizer_phone' => 'sometimes|required|string|max:20',
             'organizer_address' => 'sometimes|required|string|min:1',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
@@ -57,11 +57,11 @@ class OrganizerController extends Controller
 
         if ($request->hasFile('image')) {
             if ($organizer->image) {
-                $oldImagePath = str_replace('http://127.0.0.1:8000/storage/', '', $organizer->image);
+                $oldImagePath = str_replace('https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/', '', $organizer->image);
                 Storage::disk('public')->delete($oldImagePath); 
             }
             $imagePath = $request->file('image')->store('organizers', 'public');
-            $validated['image'] = "http://127.0.0.1:8000/storage/" . $imagePath; 
+            $validated['image'] = "https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/" . $imagePath; 
         }
 
         $organizer->update($validated);
@@ -72,7 +72,7 @@ class OrganizerController extends Controller
     {
         $organizer = Organizer::findOrFail($id);
         if ($organizer->image) {
-            $oldImagePath = str_replace('http://127.0.0.1:8000/storage/', '', $organizer->image);
+            $oldImagePath = str_replace('https://ticketopia-backend-main-dc9cem.laravel.cloud/storage/', '', $organizer->image);
             Storage::disk('public')->delete($oldImagePath);
         }
         

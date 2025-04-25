@@ -10,7 +10,7 @@ return new class extends Migration {
     {
         // EVENTS → ORGANIZERS
         Schema::table('events', function (Blueprint $table) {
-            $table->dropForeign(['organizer_id']);
+            DB::statement('ALTER TABLE events DROP FOREIGN KEY IF EXISTS events_organizer_id_foreign');
             $table->foreign('organizer_id')
                 ->references('id')->on('organizers')
                 ->onDelete('cascade');
@@ -18,7 +18,7 @@ return new class extends Migration {
 
         // EVENT_DATES → EVENTS
         Schema::table('event_dates', function (Blueprint $table) {
-            $table->dropForeign(['event_id']);
+            DB::statement('ALTER TABLE event_dates DROP FOREIGN KEY IF EXISTS event_dates_event_id_foreign');
             $table->foreign('event_id')
                 ->references('id')->on('events')
                 ->onDelete('cascade');

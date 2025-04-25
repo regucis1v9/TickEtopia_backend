@@ -10,7 +10,12 @@ return new class extends Migration {
     {
         // EVENTS → ORGANIZERS
         Schema::table('events', function (Blueprint $table) {
-            DB::statement('ALTER TABLE events DROP FOREIGN KEY IF EXISTS events_organizer_id_foreign');
+            // Check if foreign key exists before trying to drop it
+            $foreignKeys = $this->getForeignKeys('events');
+            if (in_array('events_organizer_id_foreign', $foreignKeys)) {
+                $table->dropForeign('events_organizer_id_foreign');
+            }
+            
             $table->foreign('organizer_id')
                 ->references('id')->on('organizers')
                 ->onDelete('cascade');
@@ -18,7 +23,11 @@ return new class extends Migration {
 
         // EVENT_DATES → EVENTS
         Schema::table('event_dates', function (Blueprint $table) {
-            DB::statement('ALTER TABLE event_dates DROP FOREIGN KEY IF EXISTS event_dates_event_id_foreign');
+            $foreignKeys = $this->getForeignKeys('event_dates');
+            if (in_array('event_dates_event_id_foreign', $foreignKeys)) {
+                $table->dropForeign('event_dates_event_id_foreign');
+            }
+            
             $table->foreign('event_id')
                 ->references('id')->on('events')
                 ->onDelete('cascade');
@@ -26,9 +35,15 @@ return new class extends Migration {
 
         // TICKET_PRICES → EVENTS + EVENT_DATES
         Schema::table('ticket_prices', function (Blueprint $table) {
-            // Safely drop foreign keys using raw SQL to avoid errors
-            DB::statement('ALTER TABLE ticket_prices DROP FOREIGN KEY IF EXISTS ticket_prices_event_id_foreign');
-            DB::statement('ALTER TABLE ticket_prices DROP FOREIGN KEY IF EXISTS ticket_prices_event_date_id_foreign');
+            $foreignKeys = $this->getForeignKeys('ticket_prices');
+            
+            if (in_array('ticket_prices_event_id_foreign', $foreignKeys)) {
+                $table->dropForeign('ticket_prices_event_id_foreign');
+            }
+            
+            if (in_array('ticket_prices_event_date_id_foreign', $foreignKeys)) {
+                $table->dropForeign('ticket_prices_event_date_id_foreign');
+            }
         });
 
         Schema::table('ticket_prices', function (Blueprint $table) {
@@ -48,13 +63,36 @@ return new class extends Migration {
                     ->constrained('events')
                     ->onDelete('cascade');
             } else {
-                DB::statement('ALTER TABLE tickets DROP FOREIGN KEY IF EXISTS tickets_event_id_foreign');
+                $foreignKeys = $this->getForeignKeys('tickets');
+                if (in_array('tickets_event_id_foreign', $foreignKeys)) {
+                    $table->dropForeign('tickets_event_id_foreign');
+                }
 
                 $table->foreign('event_id')
                     ->references('id')->on('events')
                     ->onDelete('cascade');
             }
         });
+    }
+
+    private function getForeignKeys($tableName)
+    {
+        $database = config('database.connections.mysql.database');
+        $foreignKeys = [];
+        
+        $constraints = DB::select("
+            SELECT CONSTRAINT_NAME
+            FROM information_schema.TABLE_CONSTRAINTS
+            WHERE CONSTRAINT_TYPE = 'FOREIGN KEY'
+            AND TABLE_SCHEMA = '$database'
+            AND TABLE_NAME = '$tableName'
+        ");
+        
+        foreach ($constraints as $constraint) {
+            $foreignKeys[] = $constraint->CONSTRAINT_NAME;
+        }
+        
+        return $foreignKeys;
     }
 
     public function down()

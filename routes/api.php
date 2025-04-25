@@ -20,7 +20,7 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 
 Route::get('/venues', [VenueController::class, 'getAllVenues'])->middleware('auth:sanctum');
 Route::post('/venues', [VenueController::class, 'addVenue'])->middleware('auth:sanctum');
-Route::post('/venues/{id}', [VenueController::class, 'editVenue'])->middleware('auth:sanctum');
+Route::put('/venues/{id}', [VenueController::class, 'editVenue'])->middleware('auth:sanctum');
 Route::delete('/venues/{id}', [VenueController::class, 'deleteVenue'])->middleware('auth:sanctum');
 Route::get('/venues/{id}', function ($id) {
     return \App\Models\Venue::findOrFail($id);

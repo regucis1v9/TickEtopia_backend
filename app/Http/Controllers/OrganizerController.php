@@ -49,7 +49,7 @@ class OrganizerController extends Controller
         $validated = $request->validate([
             'organizer_name' => 'sometimes|required|string|max:255',
             'organizer_registration_number' => 'sometimes|required|string|max:500',
-            'organizer_email' => 'sometimes|required|email|max:255' . $id,
+            'organizer_email' => 'sometimes|required|email|max:255|unique:organizers,organizer_email,' . $id,
             'organizer_phone' => 'sometimes|required|string|max:20',
             'organizer_address' => 'sometimes|required|string|min:1',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',

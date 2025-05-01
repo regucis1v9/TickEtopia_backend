@@ -16,37 +16,37 @@ use App\Http\Controllers\TicketHistoryController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->get('/user', [AuthController::class, 'user']);
-Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+Route::post('/logout', [AuthController::class, 'logout']);
 
-Route::get('/venues', [VenueController::class, 'getAllVenues'])->middleware('auth:sanctum');
-Route::post('/venues', [VenueController::class, 'addVenue'])->middleware('auth:sanctum');
-Route::post('/venues/{id}', [VenueController::class, 'editVenue'])->middleware('auth:sanctum');
-Route::delete('/venues/{id}', [VenueController::class, 'deleteVenue'])->middleware('auth:sanctum');
+Route::get('/venues', [VenueController::class, 'getAllVenues']);
+Route::post('/venues', [VenueController::class, 'addVenue']);
+Route::post('/venues/{id}', [VenueController::class, 'editVenue']);
+Route::delete('/venues/{id}', [VenueController::class, 'deleteVenue']);
 Route::get('/venues/{id}', function ($id) {
     return \App\Models\Venue::findOrFail($id);
 });
 
 
-Route::get('/organizers', [OrganizerController::class, 'getAllOrganizers'])->middleware('auth:sanctum');
-Route::post('/organizers', [OrganizerController::class, 'addOrganizer'])->middleware('auth:sanctum');
-Route::post('/organizers/{id}', [OrganizerController::class, 'editOrganizer'])->middleware('auth:sanctum');
-Route::delete('/organizers/{id}', [OrganizerController::class, 'deleteOrganizer'])->middleware('auth:sanctum');
+Route::get('/organizers', [OrganizerController::class, 'getAllOrganizers']);
+Route::post('/organizers', [OrganizerController::class, 'addOrganizer']);
+Route::post('/organizers/{id}', [OrganizerController::class, 'editOrganizer']);
+Route::delete('/organizers/{id}', [OrganizerController::class, 'deleteOrganizer']);
 Route::get('/organizers/{id}', function ($id) {
     return \App\Models\Organizer::findOrFail($id);
 });
 
-Route::post('/events', [EventController::class, 'createEvent'])->middleware('auth:sanctum');
+Route::post('/events', [EventController::class, 'createEvent']);
 Route::get('/events', [EventController::class, 'getEvents']);
-Route::delete('/events/{id}', [EventController::class, 'deleteEvent'])->middleware('auth:sanctum');
-Route::post('/events/{id}', [EventController::class, 'updateEvent'])->middleware('auth:sanctum');
+Route::delete('/events/{id}', [EventController::class, 'deleteEvent']);
+Route::post('/events/{id}', [EventController::class, 'updateEvent']);
 
-Route::post('/event_dates', [EventDateController::class, 'createEventDate'])->middleware('auth:sanctum');
-Route::put('/event_dates/{id}', [EventDateController::class, 'updateEventDate'])->middleware('auth:sanctum');
-Route::delete('/event_dates/{id}', [EventDateController::class, 'destroy'])->middleware('auth:sanctum');
+Route::post('/event_dates', [EventDateController::class, 'createEventDate']);
+Route::put('/event_dates/{id}', [EventDateController::class, 'updateEventDate']);
+Route::delete('/event_dates/{id}', [EventDateController::class, 'destroy']);
 
-Route::post('/ticket_prices', [TicketPriceController::class, 'createTicketPrice'])->middleware('auth:sanctum'); 
-Route::put('/ticket_prices/{id}', [TicketPriceController::class, 'updateTicketPrice'])->middleware('auth:sanctum');
-Route::delete('/ticket_prices/{id}', [TicketPriceController::class, 'destroy'])->middleware('auth:sanctum');
+Route::post('/ticket_prices', [TicketPriceController::class, 'createTicketPrice']); 
+Route::put('/ticket_prices/{id}', [TicketPriceController::class, 'updateTicketPrice']);
+Route::delete('/ticket_prices/{id}', [TicketPriceController::class, 'destroy']);
 
 Route::post('/create-checkout-session', [CheckoutController::class, 'createCheckoutSession']);
 Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');

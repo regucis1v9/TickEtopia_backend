@@ -28,7 +28,7 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'required|exists:organizers,id',
                 'location' => 'nullable|string',
-                'venue_id' => 'nullable|exists:venues,id', // Added venue_id validation
+                'venue_id' => 'required|exists:venues,id', // Venue ID is required
             ]);
         
             if ($validator->fails()) {
@@ -42,7 +42,7 @@ class EventController extends Controller
                 'is_public' => $request->is_public,
                 'organizer_id' => $request->organizer_id,
                 'location' => $request->location ?? '', 
-                'venue_id' => $request->venue_id ?? null, // Added venue_id to eventData
+                'venue_id' => $request->venue_id, // Venue ID is required
             ];
             
             if (isset($request->image) && !empty($request->image)) {
@@ -185,7 +185,7 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'sometimes|exists:organizers,id',
                 'location' => 'nullable|string',
-                'venue_id' => 'nullable|exists:venues,id', // Added venue_id validation
+                'venue_id' => 'sometimes|required|exists:venues,id', // Venue ID is required if provided
             ]);
 
             if ($validator->fails()) {

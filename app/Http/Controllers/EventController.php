@@ -28,6 +28,7 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'required|exists:organizers,id',
                 'location' => 'nullable|string',
+                'venue_id' => 'nullable|exists:venues,id', // Added venue_id validation
             ]);
         
             if ($validator->fails()) {
@@ -41,6 +42,7 @@ class EventController extends Controller
                 'is_public' => $request->is_public,
                 'organizer_id' => $request->organizer_id,
                 'location' => $request->location ?? '', 
+                'venue_id' => $request->venue_id ?? null, // Added venue_id to eventData
             ];
             
             if (isset($request->image) && !empty($request->image)) {
@@ -121,6 +123,7 @@ class EventController extends Controller
                 'description' => $event->description,
                 'is_public' => $event->is_public,
                 'organizer_id' => $event->organizer_id,
+                'venue_id' => $event->venue_id, // Added venue_id to response
                 'image' => $event->image,
                 'dates' => $event->eventDates->map(function ($date) {
                     return [
@@ -181,7 +184,8 @@ class EventController extends Controller
                 'is_public' => 'sometimes|boolean',
                 'image' => 'nullable|string',
                 'organizer_id' => 'sometimes|exists:organizers,id',
-                'location' => 'nullable|string', 
+                'location' => 'nullable|string',
+                'venue_id' => 'nullable|exists:venues,id', // Added venue_id validation
             ]);
 
             if ($validator->fails()) {
@@ -196,6 +200,7 @@ class EventController extends Controller
             if (isset($request->is_public)) $updateData['is_public'] = $request->is_public;
             if (isset($request->organizer_id)) $updateData['organizer_id'] = $request->organizer_id;
             if (isset($request->location)) $updateData['location'] = $request->location;
+            if (isset($request->venue_id)) $updateData['venue_id'] = $request->venue_id; // Added venue_id to updateData
 
             if (isset($request->image) && !empty($request->image)) {
                 try {

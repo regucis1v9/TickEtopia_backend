@@ -25,4 +25,9 @@ class Event extends Model
     {
         return $this->hasMany(Ticket::class);
     }
+
+    public function organizer()
+    {
+        return $this->belongsTo(Organizer::class, 'organizer_id');
+    }
 }

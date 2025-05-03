@@ -62,12 +62,13 @@ class OrganizerController extends Controller
             $validated = $request->validate([
                 'organizer_name' => 'sometimes|required|string|max:255',
                 'organizer_registration_number' => 'sometimes|required|string|max:500',
-                'organizer_email' => 'sometimes|required|email|max:255' . $id,
+                'organizer_email' => 'sometimes|required|email|max:255',
                 'organizer_phone' => 'sometimes|required|string|max:20',
                 'organizer_address' => 'sometimes|required|string|min:1',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             ]);
 
+            // Only process image if a new one was uploaded
             if ($request->hasFile('image')) {
                 Log::info('Processing image for organizer update', [
                     'organizer_id' => $id,
@@ -75,6 +76,7 @@ class OrganizerController extends Controller
                     'image_type' => $request->file('image')->getMimeType()
                 ]);
                 
+                // Delete old image if it exists
                 if ($organizer->image) {
                     $oldImagePath = str_replace('/storage/', '', parse_url($organizer->image, PHP_URL_PATH));
                     Log::info('Attempting to delete old image', ['path' => $oldImagePath]);

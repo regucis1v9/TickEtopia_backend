@@ -13,84 +13,43 @@ class EventController extends Controller
     public function createEvent(Request $request)
     {
         try {
-            Log::info('Create event request received', [
-                'has_image' => isset($request->image),
-                'request_data' => $request->except(['image'])
-            ]);
-            
             $validator = Validator::make($request->all(), [
                 'title' => 'required|string|max:255',
                 'description' => 'required|string',
                 'is_public' => 'required|boolean',
-                'image' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072', // Updated to handle file upload
                 'organizer_id' => 'required|exists:organizers,id',
             ]);
         
             if ($validator->fails()) {
-                Log::error('Event validation failed', ['errors' => $validator->errors()]);
                 return response()->json($validator->errors(), 422);
             }
         
             $validatedData = $request->all();
             
-            if (isset($request->image) && !empty($request->image)) {
-                try {
-                    Log::info('Processing base64 image for event');
-                    
-                    // Check if it's a base64 image
-                    if (strpos($request->image, 'data:image') === 0) {
-                        $imageDataParts = explode(',', $request->image);
-                        
-                        if (count($imageDataParts) === 2) {
-                            $imageData = base64_decode($imageDataParts[1]);
-                            
-                            if ($imageData === false) {
-                                Log::error('Failed to decode base64 image data');
-                                throw new \Exception('Invalid base64 image data');
-                            }
-                            
-                            $imageName = 'events/' . uniqid() . '.png';
-                            Storage::disk('public')->put($imageName, $imageData);
-                            $validatedData['image'] = Storage::url($imageName);
-                            
-                            Log::info('Image successfully stored', [
-                                'path' => $imageName,
-                                'url' => $validatedData['image']
-                            ]);
-                        } else {
-                            Log::error('Invalid base64 image format');
-                            throw new \Exception('Invalid base64 image format');
-                        }
-                    } else {
-                        // If not base64, just use the URL as is
-                        $validatedData['image'] = $request->image;
-                        Log::info('Using image URL as provided', ['url' => $validatedData['image']]);
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Error processing image', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    return response()->json([
-                        'message' => 'Error processing image',
-                        'error' => $e->getMessage()
-                    ], 500);
-                }
+            // Handle image upload like in OrganizerController
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('events', 'public');
+                $validatedData['image'] = Storage::url($imagePath);
+                
+                Log::info('Event image uploaded', [
+                    'path' => $imagePath, 
+                    'url' => $validatedData['image']
+                ]);
             }
         
             $event = Event::create($validatedData);
-            Log::info('Event created successfully', ['event_id' => $event->id]);
-            
+        
             return response()->json($event, 201);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error', ['errors' => $e->errors()]);
+            return response()->json(['message' => 'Validation error', 'errors' => $e->errors()], 422);
         } catch (\Exception $e) {
-            Log::error('Error creating event', [
-                'error' => $e->getMessage(),
+            Log::error('Server error', [
+                'error' => $e->getMessage(), 
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json([
-                'message' => 'Server error',
-                'error' => $e->getMessage()
-            ], 500);
+            return response()->json(['message' => 'Server error', 'error' => $e->getMessage()], 500);
         }
     }    
 
@@ -131,7 +90,8 @@ class EventController extends Controller
     {
         try {
             $event = Event::findOrFail($id);
-            
+
+            // Delete image if exists
             if ($event->image) {
                 $oldImagePath = str_replace('/storage/', '', parse_url($event->image, PHP_URL_PATH));
                 if (Storage::disk('public')->exists($oldImagePath)) {
@@ -139,8 +99,9 @@ class EventController extends Controller
                     Log::info('Event image deleted successfully', ['path' => $oldImagePath]);
                 }
             }
-            
+
             $event->delete();
+
             return response()->json(['message' => 'Event deleted successfully'], 200);
         } catch (\Exception $e) {
             Log::error('Delete event error', ['error' => $e->getMessage()]);
@@ -151,85 +112,51 @@ class EventController extends Controller
     public function updateEvent(Request $request, $id)
     {
         try {
-            Log::info('Update event request received', [
-                'event_id' => $id,
-                'has_image' => isset($request->image),
-                'request_data' => $request->except(['image'])
-            ]);
-            
             $event = Event::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
                 'title' => 'sometimes|string|max:255',
                 'description' => 'sometimes|string',
                 'is_public' => 'sometimes|boolean',
-                'image' => 'nullable|string',
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072', // Updated to handle file upload
                 'organizer_id' => 'sometimes|exists:organizers,id',
             ]);
 
             if ($validator->fails()) {
-                Log::error('Event update validation failed', ['errors' => $validator->errors()]);
                 return response()->json($validator->errors(), 422);
             }
 
             $validatedData = $request->all();
 
-            if (isset($request->image) && !empty($request->image)) {
-                try {
-                    // Handle base64 image
-                    if (strpos($request->image, 'data:image') === 0) {
-                        $imageDataParts = explode(',', $request->image);
-                        
-                        if (count($imageDataParts) === 2) {
-                            // Delete old image if exists
-                            if ($event->image) {
-                                $oldImagePath = str_replace('/storage/', '', parse_url($event->image, PHP_URL_PATH));
-                                if (Storage::disk('public')->exists($oldImagePath)) {
-                                    Storage::disk('public')->delete($oldImagePath);
-                                    Log::info('Old event image deleted', ['path' => $oldImagePath]);
-                                }
-                            }
-                            
-                            $imageData = base64_decode($imageDataParts[1]);
-                            
-                            if ($imageData === false) {
-                                Log::error('Failed to decode base64 image data');
-                                throw new \Exception('Invalid base64 image data');
-                            }
-                            
-                            $imageName = 'events/' . uniqid() . '.png';
-                            Storage::disk('public')->put($imageName, $imageData);
-                            $validatedData['image'] = Storage::url($imageName);
-                            
-                            Log::info('New event image stored', [
-                                'path' => $imageName,
-                                'url' => $validatedData['image']
-                            ]);
-                        } else {
-                            Log::error('Invalid base64 image format');
-                            throw new \Exception('Invalid base64 image format');
-                        }
-                    } else {
-                        // If not base64, just use the URL as is
-                        $validatedData['image'] = $request->image;
-                        Log::info('Using image URL as provided', ['url' => $validatedData['image']]);
+            // Handle image upload like in OrganizerController
+            if ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($event->image) {
+                    $oldImagePath = str_replace('/storage/', '', parse_url($event->image, PHP_URL_PATH));
+                    if (Storage::disk('public')->exists($oldImagePath)) {
+                        Storage::disk('public')->delete($oldImagePath);
+                        Log::info('Old event image deleted successfully', ['path' => $oldImagePath]);
                     }
-                } catch (\Exception $e) {
-                    Log::error('Error processing image for update', [
-                        'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
-                    ]);
-                    return response()->json([
-                        'message' => 'Error processing image',
-                        'error' => $e->getMessage()
-                    ], 500);
                 }
+
+                // Store new image
+                $imagePath = $request->file('image')->store('events', 'public');
+                $validatedData['image'] = Storage::url($imagePath);
+                Log::info('New event image stored successfully', ['path' => $imagePath]);
             }
 
             $event->update($validatedData);
-            Log::info('Event updated successfully', ['event_id' => $event->id]);
-            
+
             return response()->json($event, 200);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation error in event update', [
+                'event_id' => $id,
+                'errors' => $e->errors()
+            ]);
+            return response()->json([
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             Log::error('Event not found', ['event_id' => $id]);
             return response()->json([

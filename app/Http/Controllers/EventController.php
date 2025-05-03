@@ -19,7 +19,6 @@ class EventController extends Controller
                 'request_data' => $request->except(['image'])
             ]);
             
-            // Start a transaction to ensure data consistency
             DB::beginTransaction();
             
             $validator = Validator::make($request->all(), [
@@ -28,7 +27,7 @@ class EventController extends Controller
                 'is_public' => 'required|boolean',
                 'image' => 'nullable|string',
                 'organizer_id' => 'required|exists:organizers,id',
-                // Don't include location here as it's in the venue table
+                'location' => 'nullable|string',
             ]);
         
             if ($validator->fails()) {
@@ -41,14 +40,13 @@ class EventController extends Controller
                 'description' => $request->description,
                 'is_public' => $request->is_public,
                 'organizer_id' => $request->organizer_id,
-                // Only include fields that are actually in the events table
+                'location' => $request->location ?? '', 
             ];
             
             if (isset($request->image) && !empty($request->image)) {
                 try {
                     Log::info('Processing base64 image for event');
                     
-                    // Check if it's a base64 image
                     if (strpos($request->image, 'data:image') === 0) {
                         $imageDataParts = explode(',', $request->image);
                         
@@ -73,7 +71,6 @@ class EventController extends Controller
                             throw new \Exception('Invalid base64 image format');
                         }
                     } else {
-                        // If not base64, just use the URL as is
                         $eventData['image'] = $request->image;
                         Log::info('Using image URL as provided', ['url' => $eventData['image']]);
                     }
@@ -92,14 +89,12 @@ class EventController extends Controller
         
             $event = Event::create($eventData);
             
-            // Commit the transaction
             DB::commit();
             
             Log::info('Event created successfully', ['event_id' => $event->id]);
             
             return response()->json($event, 201);
         } catch (\Exception $e) {
-            // Rollback in case of error
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
@@ -113,7 +108,7 @@ class EventController extends Controller
                 'error' => $e->getMessage()
             ], 500);
         }
-    }    
+    }
 
     public function getEvents()
     {
@@ -186,7 +181,7 @@ class EventController extends Controller
                 'is_public' => 'sometimes|boolean',
                 'image' => 'nullable|string',
                 'organizer_id' => 'sometimes|exists:organizers,id',
-                // Don't include location here as it's in the venue table
+                'location' => 'nullable|string', 
             ]);
 
             if ($validator->fails()) {
@@ -196,20 +191,18 @@ class EventController extends Controller
 
             $updateData = [];
             
-            // Only include fields that are actually in the events table
             if (isset($request->title)) $updateData['title'] = $request->title;
             if (isset($request->description)) $updateData['description'] = $request->description;
             if (isset($request->is_public)) $updateData['is_public'] = $request->is_public;
             if (isset($request->organizer_id)) $updateData['organizer_id'] = $request->organizer_id;
+            if (isset($request->location)) $updateData['location'] = $request->location;
 
             if (isset($request->image) && !empty($request->image)) {
                 try {
-                    // Handle base64 image
                     if (strpos($request->image, 'data:image') === 0) {
                         $imageDataParts = explode(',', $request->image);
                         
                         if (count($imageDataParts) === 2) {
-                            // Delete old image if exists
                             if ($event->image) {
                                 $oldImagePath = str_replace('/storage/', '', parse_url($event->image, PHP_URL_PATH));
                                 if (Storage::disk('public')->exists($oldImagePath)) {
@@ -238,7 +231,6 @@ class EventController extends Controller
                             throw new \Exception('Invalid base64 image format');
                         }
                     } else {
-                        // If not base64, just use the URL as is
                         $updateData['image'] = $request->image;
                         Log::info('Using image URL as provided', ['url' => $updateData['image']]);
                     }

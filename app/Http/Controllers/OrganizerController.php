@@ -24,6 +24,7 @@ class OrganizerController extends Controller
                 'organizer_email' => 'required|email|max:255',
                 'organizer_phone' => 'sometimes|required|string|max:20|regex:/^\+?[0-9\s\-\(\)]+$/',
                 'organizer_address' => 'required|string|min:1',
+                'notes' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             ]);
 
@@ -65,6 +66,7 @@ class OrganizerController extends Controller
                 'organizer_email' => 'sometimes|required|email|max:255',
                 'organizer_phone' => 'sometimes|required|string|max:20',
                 'organizer_address' => 'sometimes|required|string|min:1',
+                'notes' => 'nullable|string',
                 'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:3072',
             ]);
 

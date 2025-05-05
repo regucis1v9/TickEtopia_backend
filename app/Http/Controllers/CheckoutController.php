@@ -11,7 +11,7 @@ class CheckoutController extends Controller
     public function createCheckoutSession(Request $request)
     {
         try {
-            Stripe::setApiKey(env('sk_test_51OWZ2IHrTxM02xRgUTM8ytQckf5fgHQGEn1Btkkd317ErRTcZQgpCpAH1Gf8ExCkCMu5uP4WxV5l8v0xvZumIA6f00kJtKOB90'));
+            Stripe::setApiKey(env('STRIPE_SECRET'));
 
             $cartItems = $request->input('cartItems', []);
             $userId = $request->input('user_id');
@@ -64,7 +64,7 @@ class CheckoutController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        Stripe::setApiKey(env('sk_test_51OWZ2IHrTxM02xRgUTM8ytQckf5fgHQGEn1Btkkd317ErRTcZQgpCpAH1Gf8ExCkCMu5uP4WxV5l8v0xvZumIA6f00kJtKOB90'));
+        Stripe::setApiKey(env('STRIPE_SECRET'));
 
         $payload = @file_get_contents("php://input");
         $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';

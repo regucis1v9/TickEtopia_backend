@@ -8,10 +8,20 @@ use Stripe\Checkout\Session;
 
 class CheckoutController extends Controller
 {
+    // Hardcoded Stripe keys (make sure to rotate if exposed previously)
+    private $stripeSecret;
+    private $stripeWebhookSecret;
+    
+    public function __construct()
+    {
+        $this->stripeSecret = config('stripe.secret');
+        $this->stripeWebhookSecret = config('stripe.webhook_secret');
+    }
+
     public function createCheckoutSession(Request $request)
     {
         try {
-            Stripe::setApiKey(env('STRIPE_SECRET'));
+            Stripe::setApiKey($this->stripeSecret);
 
             $cartItems = $request->input('cartItems', []);
             $userId = $request->input('user_id');
@@ -45,8 +55,8 @@ class CheckoutController extends Controller
             $checkout_session = Session::create([
                 'line_items' => $lineItems,
                 'mode' => 'payment',
-                'success_url' => env('APP_URL') . '/checkout/success',
-                'cancel_url' => env('APP_URL') . '/checkout/cancel',
+                'success_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/success',
+                'cancel_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/cancel',
                 'metadata' => [
                     'user_id' => $userId, 
                     'event_ids' => json_encode(array_column($cartItems, 'event_id')), 
@@ -64,11 +74,11 @@ class CheckoutController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        Stripe::setApiKey(env('STRIPE_SECRET'));
+        Stripe::setApiKey($this->stripeSecret);
 
         $payload = @file_get_contents("php://input");
         $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
-        $endpoint_secret = env('STRIPE_WEBHOOK_SECRET');
+        $endpoint_secret = $this->stripeWebhookSecret;
 
         try {
             $event = \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);

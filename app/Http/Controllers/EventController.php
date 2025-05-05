@@ -28,6 +28,7 @@ class EventController extends Controller
             'is_public' => 'required|boolean',
             'image' => 'nullable|string',
             'organizer_id' => 'required|exists:organizers,id',
+            'location' => 'nullable|string',
             'venue_id' => 'required|exists:venues,id', 
             'start_date_time' => 'required|date',
             'end_date_time' => 'required|date|after:start_date_time',
@@ -38,6 +39,7 @@ class EventController extends Controller
             return response()->json($validator->errors(), 422);
         }
         
+        // Process image if provided
         $eventImageUrl = null;
         if (isset($request->image) && !empty($request->image)) {
             try {
@@ -89,6 +91,7 @@ class EventController extends Controller
             'description' => $request->description,
             'is_public' => $request->is_public,
             'organizer_id' => $request->organizer_id,
+            'location' => $request->location ?? '',
             'image' => $eventImageUrl,
         ]);
         

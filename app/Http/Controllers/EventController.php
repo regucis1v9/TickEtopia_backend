@@ -30,7 +30,7 @@ class EventController extends Controller
                 'organizer_id' => 'required|exists:organizers,id',
                 'location' => 'nullable|string',
                 'venue_id' => 'required|exists:venues,id', 
-                'start_date_time' => 'required|date', // Added validation for event date fields
+                'start_date_time' => 'required|date',
                 'end_date_time' => 'required|date|after:start_date_time',
             ]);
         
@@ -38,17 +38,9 @@ class EventController extends Controller
                 Log::error('Event validation failed', ['errors' => $validator->errors()]);
                 return response()->json($validator->errors(), 422);
             }
-        
-            $eventData = [
-                'title' => $request->title,
-                'description' => $request->description,
-                'is_public' => $request->is_public,
-                'organizer_id' => $request->organizer_id,
-                'location' => $request->location ?? '', 
-                'venue_id' => $request->venue_id,
-                // Remove event_date_id from here
-            ];
             
+            // Process image if provided
+            $eventImageUrl = null;
             if (isset($request->image) && !empty($request->image)) {
                 try {
                     Log::info('Processing base64 image for event');
@@ -66,19 +58,19 @@ class EventController extends Controller
                             
                             $imageName = 'events/' . uniqid() . '.png';
                             Storage::disk('public')->put($imageName, $imageData);
-                            $eventData['image'] = Storage::url($imageName);
+                            $eventImageUrl = Storage::url($imageName);
                             
                             Log::info('Image successfully stored', [
                                 'path' => $imageName,
-                                'url' => $eventData['image']
+                                'url' => $eventImageUrl
                             ]);
                         } else {
                             Log::error('Invalid base64 image format');
                             throw new \Exception('Invalid base64 image format');
                         }
                     } else {
-                        $eventData['image'] = $request->image;
-                        Log::info('Using image URL as provided', ['url' => $eventData['image']]);
+                        $eventImageUrl = $request->image;
+                        Log::info('Using image URL as provided', ['url' => $eventImageUrl]);
                     }
                 } catch (\Exception $e) {
                     DB::rollBack();
@@ -92,17 +84,29 @@ class EventController extends Controller
                     ], 500);
                 }
             }
-        
-            // Create event first
-            $event = Event::create($eventData);
             
-            // Then create event date with the event_id
+            // Create event date first
             $eventDate = EventDate::create([
-                'event_id' => $event->id,
                 'start_date_time' => $request->start_date_time,
                 'end_date_time' => $request->end_date_time,
-                'venue_id' => $request->venue_id
+                'venue_id' => $request->venue_id,
+                // We'll update the event_id after creating the event
             ]);
+            
+            // Then create event with the event_date_id
+            $event = Event::create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'is_public' => $request->is_public,
+                'organizer_id' => $request->organizer_id,
+                'location' => $request->location ?? '', 
+                'venue_id' => $request->venue_id,
+                'event_date_id' => $eventDate->id,  // Include the event_date_id
+                'image' => $eventImageUrl
+            ]);
+            
+            // Update the event date with the event ID
+            $eventDate->update(['event_id' => $event->id]);
             
             DB::commit();
             
@@ -143,6 +147,7 @@ class EventController extends Controller
                 'is_public' => $event->is_public,
                 'organizer_id' => $event->organizer_id,
                 'venue_id' => $event->venue_id, 
+                'event_date_id' => $event->event_date_id,  // Include this field
                 'image' => $event->image,
                 'dates' => $event->eventDates->map(function ($date) {
                     return [
@@ -205,6 +210,7 @@ class EventController extends Controller
                 'organizer_id' => 'sometimes|exists:organizers,id',
                 'location' => 'nullable|string',
                 'venue_id' => 'sometimes|required|exists:venues,id',
+                'event_date_id' => 'sometimes|exists:event_dates,id',
                 // Event date fields can be updated separately
             ]);
 
@@ -221,6 +227,7 @@ class EventController extends Controller
             if (isset($request->organizer_id)) $updateData['organizer_id'] = $request->organizer_id;
             if (isset($request->location)) $updateData['location'] = $request->location;
             if (isset($request->venue_id)) $updateData['venue_id'] = $request->venue_id;
+            if (isset($request->event_date_id)) $updateData['event_date_id'] = $request->event_date_id;
 
             if (isset($request->image) && !empty($request->image)) {
                 try {
@@ -274,20 +281,24 @@ class EventController extends Controller
             $event->update($updateData);
             
             // Update event dates if provided
-            if (isset($request->event_date_id) && (isset($request->start_date_time) || isset($request->end_date_time))) {
-                $eventDate = EventDate::findOrFail($request->event_date_id);
+            if (isset($request->start_date_time) || isset($request->end_date_time)) {
+                // Get the event date ID, either from the request or from the event
+                $eventDateId = $request->event_date_id ?? $event->event_date_id;
                 
-                $dateUpdateData = [];
-                if (isset($request->start_date_time)) $dateUpdateData['start_date_time'] = $request->start_date_time;
-                if (isset($request->end_date_time)) $dateUpdateData['end_date_time'] = $request->end_date_time;
-                if (isset($request->venue_id)) $dateUpdateData['venue_id'] = $request->venue_id;
-                
-                $eventDate->update($dateUpdateData);
+                if ($eventDateId) {
+                    $eventDate = EventDate::findOrFail($eventDateId);
+                    
+                    $dateUpdateData = [];
+                    if (isset($request->start_date_time)) $dateUpdateData['start_date_time'] = $request->start_date_time;
+                    if (isset($request->end_date_time)) $dateUpdateData['end_date_time'] = $request->end_date_time;
+                    if (isset($request->venue_id)) $dateUpdateData['venue_id'] = $request->venue_id;
+                    
+                    $eventDate->update($dateUpdateData);
+                }
             }
             
             Log::info('Event updated successfully', ['event_id' => $event->id]);
             
-            // Load the event with its relationships for the response
             $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
             
             return response()->json($event, 200);

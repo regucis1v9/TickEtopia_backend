@@ -92,10 +92,11 @@ class EventController extends Controller
                 'organizer_id' => $request->organizer_id,
                 'location' => $request->location ?? '',
                 'venue_id' => $request->venue_id,
-                'image' => $eventImageUrl
+                'image' => $eventImageUrl,
+                'event_date_id' => null, // or omit this if it's nullable
             ]);
             
-            // Then create event date and assign event_id
+            // Create the EventDate now that Event exists
             $eventDate = EventDate::create([
                 'start_date_time' => $request->start_date_time,
                 'end_date_time' => $request->end_date_time,
@@ -103,8 +104,10 @@ class EventController extends Controller
                 'event_id' => $event->id
             ]);
             
-            // Update the event with event_date_id
-            $event->update(['event_date_id' => $eventDate->id]);
+            // Now update the Event with the event_date_id
+            $event->update([
+                'event_date_id' => $eventDate->id
+            ]);
             
             DB::commit();
             

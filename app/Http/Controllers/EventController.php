@@ -13,121 +13,122 @@ use Illuminate\Support\Facades\DB;
 class EventController extends Controller
 {
     public function createEvent(Request $request)
-{
-    try {
-        Log::info('Create event request received', [
-            'has_image' => isset($request->image),
-            'request_data' => $request->except(['image'])
-        ]);
+    {
+        try {
+            Log::info('Create event request received', [
+                'has_image' => isset($request->image),
+                'request_data' => $request->except(['image'])
+            ]);
+            
+            DB::beginTransaction();
+            
+            $validator = Validator::make($request->all(), [
+                'title' => 'required|string|max:255',
+                'description' => 'required|string',
+                'is_public' => 'required|boolean',
+                'image' => 'nullable|string',
+                'organizer_id' => 'required|exists:organizers,id',
+                'location' => 'nullable|string',
+                'venue_id' => 'required|exists:venues,id', 
+                'start_date_time' => 'required|date',
+                'end_date_time' => 'required|date|after:start_date_time',
+            ]);
         
-        DB::beginTransaction();
-        
-        $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
-            'description' => 'required|string',
-            'is_public' => 'required|boolean',
-            'image' => 'nullable|string',
-            'organizer_id' => 'required|exists:organizers,id',
-            'location' => 'nullable|string',
-            'venue_id' => 'required|exists:venues,id', 
-            'start_date_time' => 'required|date',
-            'end_date_time' => 'required|date|after:start_date_time',
-        ]);
-    
-        if ($validator->fails()) {
-            Log::error('Event validation failed', ['errors' => $validator->errors()]);
-            return response()->json($validator->errors(), 422);
-        }
-        
-        // Process image if provided
-        $eventImageUrl = null;
-        if (isset($request->image) && !empty($request->image)) {
-            try {
-                Log::info('Processing base64 image for event');
-                
-                if (strpos($request->image, 'data:image') === 0) {
-                    $imageDataParts = explode(',', $request->image);
-                    
-                    if (count($imageDataParts) === 2) {
-                        $imageData = base64_decode($imageDataParts[1]);
-                        
-                        if ($imageData === false) {
-                            Log::error('Failed to decode base64 image data');
-                            throw new \Exception('Invalid base64 image data');
-                        }
-                        
-                        $imageName = 'events/' . uniqid() . '.png';
-                        Storage::disk('public')->put($imageName, $imageData);
-                        $eventImageUrl = Storage::url($imageName);
-                        
-                        Log::info('Image successfully stored', [
-                            'path' => $imageName,
-                            'url' => $eventImageUrl
-                        ]);
-                    } else {
-                        Log::error('Invalid base64 image format');
-                        throw new \Exception('Invalid base64 image format');
-                    }
-                } else {
-                    $eventImageUrl = $request->image;
-                    Log::info('Using image URL as provided', ['url' => $eventImageUrl]);
-                }
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Error processing image', [
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString()
-                ]);
-                return response()->json([
-                    'message' => 'Error processing image',
-                    'error' => $e->getMessage()
-                ], 500);
+            if ($validator->fails()) {
+                Log::error('Event validation failed', ['errors' => $validator->errors()]);
+                return response()->json($validator->errors(), 422);
             }
+            
+            // Process image if provided
+            $eventImageUrl = null;
+            if (isset($request->image) && !empty($request->image)) {
+                try {
+                    Log::info('Processing base64 image for event');
+                    
+                    if (strpos($request->image, 'data:image') === 0) {
+                        $imageDataParts = explode(',', $request->image);
+                        
+                        if (count($imageDataParts) === 2) {
+                            $imageData = base64_decode($imageDataParts[1]);
+                            
+                            if ($imageData === false) {
+                                Log::error('Failed to decode base64 image data');
+                                throw new \Exception('Invalid base64 image data');
+                            }
+                            
+                            $imageName = 'events/' . uniqid() . '.png';
+                            Storage::disk('public')->put($imageName, $imageData);
+                            $eventImageUrl = Storage::url($imageName);
+                            
+                            Log::info('Image successfully stored', [
+                                'path' => $imageName,
+                                'url' => $eventImageUrl
+                            ]);
+                        } else {
+                            Log::error('Invalid base64 image format');
+                            throw new \Exception('Invalid base64 image format');
+                        }
+                    } else {
+                        $eventImageUrl = $request->image;
+                        Log::info('Using image URL as provided', ['url' => $eventImageUrl]);
+                    }
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    Log::error('Error processing image', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    return response()->json([
+                        'message' => 'Error processing image',
+                        'error' => $e->getMessage()
+                    ], 500);
+                }
+            }
+            
+            // Create the Event including venue_id
+            $event = Event::create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'is_public' => $request->is_public,
+                'organizer_id' => $request->organizer_id,
+                'location' => $request->location ?? '',
+                'image' => $eventImageUrl,
+                'venue_id' => $request->venue_id,  // Add this line to include venue_id
+            ]);
+            
+            // Create the EventDate now that Event exists
+            $eventDate = EventDate::create([
+                'start_date_time' => $request->start_date_time,
+                'end_date_time' => $request->end_date_time,
+                'venue_id' => $request->venue_id,
+                'event_id' => $event->id
+            ]);
+            
+            DB::commit();
+            
+            Log::info('Event created successfully', [
+                'event_id' => $event->id,
+                'event_date_id' => $eventDate->id
+            ]);
+            
+            $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
+            
+            return response()->json($event, 201);
+        } catch (\Exception $e) {
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            
+            Log::error('Error creating event', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Server error',
+                'error' => $e->getMessage()
+            ], 500);
         }
-        
-        // Create the Event with only required fields, removing event_date_id
-        $event = Event::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'is_public' => $request->is_public,
-            'organizer_id' => $request->organizer_id,
-            'location' => $request->location ?? '',
-            'image' => $eventImageUrl,
-        ]);
-        
-        // Create the EventDate now that Event exists
-        $eventDate = EventDate::create([
-            'start_date_time' => $request->start_date_time,
-            'end_date_time' => $request->end_date_time,
-            'venue_id' => $request->venue_id,
-            'event_id' => $event->id
-        ]);
-        
-        DB::commit();
-        
-        Log::info('Event created successfully', [
-            'event_id' => $event->id,
-            'event_date_id' => $eventDate->id
-        ]);
-        
-        $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
-        
-        return response()->json($event, 201);
-    } catch (\Exception $e) {
-        if (DB::transactionLevel() > 0) {
-            DB::rollBack();
-        }
-        
-        Log::error('Error creating event', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        return response()->json([
-            'message' => 'Server error',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     public function getEvents()
     {

@@ -9,7 +9,7 @@ class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['title', 'description', 'is_public', 'image', 'organizer_id', 'location'];
+    protected $fillable = ['title', 'description', 'is_public', 'image', 'organizer_id', 'location', 'venue_id'];
 
     public function eventDates()
     {
@@ -18,7 +18,7 @@ class Event extends Model
 
     public function ticketPrices()
     {
-        return $this->hasMany(TicketPrice::class);
+        return $this->hasManyThrough(TicketPrice::class, EventDate::class);
     }
 
     public function tickets()
@@ -31,4 +31,8 @@ class Event extends Model
         return $this->belongsTo(Organizer::class, 'organizer_id');
     }
     
+    public function venue()
+    {
+        return $this->belongsTo(Venue::class);
+    }
 }

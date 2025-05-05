@@ -18,6 +18,9 @@ return new class extends Migration
                 $table->timestamp('deleted_at')->nullable();
                 $table->string('image')->nullable();
                 $table->foreignId('organizer_id')->constrained('organizers');
+                $table->foreignId('event_date_id')->nullable(); 
+                $table->foreignId('venue_id')->nullable();
+                $table->string('location')->nullable();
             });
         } else {
             Schema::table('events', function (Blueprint $table) {
@@ -36,6 +39,18 @@ return new class extends Migration
                 if (!Schema::hasColumn('events', 'organizer_id')) {
                     $table->foreignId('organizer_id')->constrained('organizers')->after('image');
                 }
+                
+                if (!Schema::hasColumn('events', 'event_date_id')) {
+                    $table->foreignId('event_date_id')->nullable()->after('organizer_id');
+                }
+                
+                if (!Schema::hasColumn('events', 'venue_id')) {
+                    $table->foreignId('venue_id')->nullable()->after('event_date_id');
+                }
+                
+                if (!Schema::hasColumn('events', 'location')) {
+                    $table->string('location')->nullable()->after('venue_id');
+                }
             });
         }
     }
@@ -43,7 +58,7 @@ return new class extends Migration
     public function down()
     {
         if (Schema::hasTable('events')) {
-            $columnsToCheck = ['is_public', 'deleted_at', 'image', 'organizer_id'];
+            $columnsToCheck = ['is_public', 'deleted_at', 'image', 'organizer_id', 'event_date_id', 'venue_id', 'location'];
             $columnsToRemove = [];
             
             foreach ($columnsToCheck as $column) {

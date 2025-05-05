@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\EventDate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage; 
@@ -28,8 +29,9 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'required|exists:organizers,id',
                 'location' => 'nullable|string',
-                'venue_id' => 'required|exists:venues,id',
-                'event_date_id' => 'required|exists:event_dates,id', // Add validation for event_date_id
+                'venue_id' => 'required|exists:venues,id', 
+                'start_date_time' => 'required|date', // Added validation for event date fields
+                'end_date_time' => 'required|date|after:start_date_time',
             ]);
         
             if ($validator->fails()) {
@@ -44,7 +46,7 @@ class EventController extends Controller
                 'organizer_id' => $request->organizer_id,
                 'location' => $request->location ?? '', 
                 'venue_id' => $request->venue_id,
-                'event_date_id' => $request->event_date_id, // Add event_date_id to the data array
+                // Remove event_date_id from here
             ];
             
             if (isset($request->image) && !empty($request->image)) {
@@ -91,11 +93,26 @@ class EventController extends Controller
                 }
             }
         
+            // Create event first
             $event = Event::create($eventData);
+            
+            // Then create event date with the event_id
+            $eventDate = EventDate::create([
+                'event_id' => $event->id,
+                'start_date_time' => $request->start_date_time,
+                'end_date_time' => $request->end_date_time,
+                'venue_id' => $request->venue_id
+            ]);
             
             DB::commit();
             
-            Log::info('Event created successfully', ['event_id' => $event->id]);
+            Log::info('Event created successfully', [
+                'event_id' => $event->id,
+                'event_date_id' => $eventDate->id
+            ]);
+            
+            // Load the event with its relationships for the response
+            $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
             
             return response()->json($event, 201);
         } catch (\Exception $e) {
@@ -126,7 +143,6 @@ class EventController extends Controller
                 'is_public' => $event->is_public,
                 'organizer_id' => $event->organizer_id,
                 'venue_id' => $event->venue_id, 
-                'event_date_id' => $event->event_date_id, // Include event_date_id in the response
                 'image' => $event->image,
                 'dates' => $event->eventDates->map(function ($date) {
                     return [
@@ -189,7 +205,7 @@ class EventController extends Controller
                 'organizer_id' => 'sometimes|exists:organizers,id',
                 'location' => 'nullable|string',
                 'venue_id' => 'sometimes|required|exists:venues,id',
-                'event_date_id' => 'sometimes|exists:event_dates,id', // Add validation for event_date_id
+                // Event date fields can be updated separately
             ]);
 
             if ($validator->fails()) {
@@ -205,7 +221,6 @@ class EventController extends Controller
             if (isset($request->organizer_id)) $updateData['organizer_id'] = $request->organizer_id;
             if (isset($request->location)) $updateData['location'] = $request->location;
             if (isset($request->venue_id)) $updateData['venue_id'] = $request->venue_id;
-            if (isset($request->event_date_id)) $updateData['event_date_id'] = $request->event_date_id; // Add event_date_id to updateData
 
             if (isset($request->image) && !empty($request->image)) {
                 try {
@@ -257,7 +272,23 @@ class EventController extends Controller
             }
 
             $event->update($updateData);
+            
+            // Update event dates if provided
+            if (isset($request->event_date_id) && (isset($request->start_date_time) || isset($request->end_date_time))) {
+                $eventDate = EventDate::findOrFail($request->event_date_id);
+                
+                $dateUpdateData = [];
+                if (isset($request->start_date_time)) $dateUpdateData['start_date_time'] = $request->start_date_time;
+                if (isset($request->end_date_time)) $dateUpdateData['end_date_time'] = $request->end_date_time;
+                if (isset($request->venue_id)) $dateUpdateData['venue_id'] = $request->venue_id;
+                
+                $eventDate->update($dateUpdateData);
+            }
+            
             Log::info('Event updated successfully', ['event_id' => $event->id]);
+            
+            // Load the event with its relationships for the response
+            $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
             
             return response()->json($event, 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {

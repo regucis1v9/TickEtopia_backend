@@ -85,13 +85,6 @@ class EventController extends Controller
                 }
             }
             
-            $eventDate = EventDate::create([
-                'start_date_time' => $request->start_date_time,
-                'end_date_time' => $request->end_date_time,
-                'venue_id' => $request->venue_id,
-                'event_id' => $event->id
-            ]);
-
             $event = Event::create([
                 'title' => $request->title,
                 'description' => $request->description,
@@ -103,7 +96,12 @@ class EventController extends Controller
             ]);
             
             // Then create event date and assign event_id
-
+            $eventDate = EventDate::create([
+                'start_date_time' => $request->start_date_time,
+                'end_date_time' => $request->end_date_time,
+                'venue_id' => $request->venue_id,
+                'event_id' => $event->id
+            ]);
             
             // Update the event with event_date_id
             $event->update(['event_date_id' => $eventDate->id]);

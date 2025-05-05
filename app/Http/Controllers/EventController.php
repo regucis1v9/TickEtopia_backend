@@ -28,7 +28,8 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'required|exists:organizers,id',
                 'location' => 'nullable|string',
-                'venue_id' => 'required|exists:venues,id', // Venue ID is required
+                'venue_id' => 'required|exists:venues,id',
+                'event_date_id' => 'required|exists:event_dates,id', // Add validation for event_date_id
             ]);
         
             if ($validator->fails()) {
@@ -42,7 +43,8 @@ class EventController extends Controller
                 'is_public' => $request->is_public,
                 'organizer_id' => $request->organizer_id,
                 'location' => $request->location ?? '', 
-                'venue_id' => $request->venue_id, // Venue ID is required
+                'venue_id' => $request->venue_id,
+                'event_date_id' => $request->event_date_id, // Add event_date_id to the data array
             ];
             
             if (isset($request->image) && !empty($request->image)) {
@@ -123,7 +125,8 @@ class EventController extends Controller
                 'description' => $event->description,
                 'is_public' => $event->is_public,
                 'organizer_id' => $event->organizer_id,
-                'venue_id' => $event->venue_id, // Added venue_id to response
+                'venue_id' => $event->venue_id, 
+                'event_date_id' => $event->event_date_id, // Include event_date_id in the response
                 'image' => $event->image,
                 'dates' => $event->eventDates->map(function ($date) {
                     return [
@@ -185,7 +188,8 @@ class EventController extends Controller
                 'image' => 'nullable|string',
                 'organizer_id' => 'sometimes|exists:organizers,id',
                 'location' => 'nullable|string',
-                'venue_id' => 'sometimes|required|exists:venues,id', // Venue ID is required if provided
+                'venue_id' => 'sometimes|required|exists:venues,id',
+                'event_date_id' => 'sometimes|exists:event_dates,id', // Add validation for event_date_id
             ]);
 
             if ($validator->fails()) {
@@ -200,7 +204,8 @@ class EventController extends Controller
             if (isset($request->is_public)) $updateData['is_public'] = $request->is_public;
             if (isset($request->organizer_id)) $updateData['organizer_id'] = $request->organizer_id;
             if (isset($request->location)) $updateData['location'] = $request->location;
-            if (isset($request->venue_id)) $updateData['venue_id'] = $request->venue_id; // Added venue_id to updateData
+            if (isset($request->venue_id)) $updateData['venue_id'] = $request->venue_id;
+            if (isset($request->event_date_id)) $updateData['event_date_id'] = $request->event_date_id; // Add event_date_id to updateData
 
             if (isset($request->image) && !empty($request->image)) {
                 try {

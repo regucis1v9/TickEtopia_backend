@@ -85,28 +85,26 @@ class EventController extends Controller
                 }
             }
             
-            // Create event date first
-            $eventDate = EventDate::create([
-                'start_date_time' => $request->start_date_time,
-                'end_date_time' => $request->end_date_time,
-                'venue_id' => $request->venue_id,
-                // We'll update the event_id after creating the event
-            ]);
-            
-            // Then create event with the event_date_id
             $event = Event::create([
                 'title' => $request->title,
                 'description' => $request->description,
                 'is_public' => $request->is_public,
                 'organizer_id' => $request->organizer_id,
-                'location' => $request->location ?? '', 
+                'location' => $request->location ?? '',
                 'venue_id' => $request->venue_id,
-                'event_date_id' => $eventDate->id,  // Include the event_date_id
                 'image' => $eventImageUrl
             ]);
             
-            // Update the event date with the event ID
-            $eventDate->update(['event_id' => $event->id]);
+            // Then create event date and assign event_id
+            $eventDate = EventDate::create([
+                'start_date_time' => $request->start_date_time,
+                'end_date_time' => $request->end_date_time,
+                'venue_id' => $request->venue_id,
+                'event_id' => $event->id
+            ]);
+            
+            // Update the event with event_date_id
+            $event->update(['event_date_id' => $eventDate->id]);
             
             DB::commit();
             
@@ -115,7 +113,6 @@ class EventController extends Controller
                 'event_date_id' => $eventDate->id
             ]);
             
-            // Load the event with its relationships for the response
             $event = Event::with(['eventDates.venue', 'ticketPrices'])->find($event->id);
             
             return response()->json($event, 201);
@@ -147,7 +144,7 @@ class EventController extends Controller
                 'is_public' => $event->is_public,
                 'organizer_id' => $event->organizer_id,
                 'venue_id' => $event->venue_id, 
-                'event_date_id' => $event->event_date_id,  // Include this field
+                'event_date_id' => $event->event_date_id, 
                 'image' => $event->image,
                 'dates' => $event->eventDates->map(function ($date) {
                     return [
@@ -211,7 +208,6 @@ class EventController extends Controller
                 'location' => 'nullable|string',
                 'venue_id' => 'sometimes|required|exists:venues,id',
                 'event_date_id' => 'sometimes|exists:event_dates,id',
-                // Event date fields can be updated separately
             ]);
 
             if ($validator->fails()) {
@@ -280,9 +276,7 @@ class EventController extends Controller
 
             $event->update($updateData);
             
-            // Update event dates if provided
             if (isset($request->start_date_time) || isset($request->end_date_time)) {
-                // Get the event date ID, either from the request or from the event
                 $eventDateId = $request->event_date_id ?? $event->event_date_id;
                 
                 if ($eventDateId) {

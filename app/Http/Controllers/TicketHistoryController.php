@@ -68,7 +68,7 @@ class TicketHistoryController extends Controller
     public function getUserHistory(Request $request)
     {
         try {
-            $userId = 1;
+            $userId = $request->user()->id;
             
             $history = TicketHistory::with([
                     'ticket', 

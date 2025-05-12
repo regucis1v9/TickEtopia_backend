@@ -16,8 +16,9 @@ class TicketHistory extends Model
         'description',
     ];
 
-    public $timestamps = true;
-
+    /**
+     * Get the ticket associated with the history record.
+     */
     public function ticket()
     {
         return $this->belongsTo(Ticket::class);
@@ -32,10 +33,26 @@ class TicketHistory extends Model
     }
 
     /**
-     * Get the status associated with the history record.
+     * Get the status attribute.
+     * This is a virtual attribute to replace the missing status relationship.
      */
-    public function status()
+    public function getStatusAttribute()
     {
-        return $this->belongsTo(TicketStatus::class, 'status_id');
+        // Return a simple object with name property based on status_id
+        // You can customize this based on your status IDs
+        $statusName = 'Unknown';
+        
+        if ($this->status_id == 1) {
+            $statusName = 'Purchased';
+        } elseif ($this->status_id == 2) {
+            $statusName = 'Used';
+        } elseif ($this->status_id == 3) {
+            $statusName = 'Cancelled';
+        }
+        
+        return (object)[
+            'id' => $this->status_id,
+            'name' => $statusName
+        ];
     }
 }

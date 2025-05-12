@@ -138,9 +138,12 @@ class TicketHistoryController extends Controller
         try {
             $userId = $request->user()->id;
             
+            // Log the request for debugging
+            \Log::info('Fetching user ticket history', ['user_id' => $userId]);
+            
+            // Simplified query that doesn't rely on status relationship
             $history = TicketHistory::with([
                     'ticket', 
-                    'status',
                     'ticket.event' => function($query) {
                         $query->select('id', 'title as name', 'description', 'image as image_url');
                     }
@@ -148,6 +151,8 @@ class TicketHistoryController extends Controller
                 ->where('user_id', $userId)
                 ->orderBy('created_at', 'desc')
                 ->get();
+            
+            // Status is now available via the getStatusAttribute accessor method
             
             return response()->json([
                 'status' => 'success',

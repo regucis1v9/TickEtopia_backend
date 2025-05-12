@@ -55,8 +55,8 @@ class CheckoutController extends Controller
         $checkout_session = Session::create([
             'line_items' => $lineItems,
             'mode' => 'payment',
-            'success_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/success',
-            'cancel_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/cancel',
+            'success_url' => 'https://ticketopia-frontend.vercel.app/history?session_id={CHECKOUT_SESSION_ID}',  // Updated URL
+            'cancel_url' => 'https://ticketopia-frontend.vercel.app/cancel',
             'metadata' => [
                 'user_id' => (string) $userId,
                 'event_ids' => implode(',', array_column($cartItems, 'event_id')),

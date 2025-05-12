@@ -140,6 +140,19 @@ class CheckoutController extends Controller
         return response()->json(['status' => 'success']);
     }
 
+    public function getSessionDetails($sessionId)
+    {
+        Stripe::setApiKey($this->stripeSecret);
+
+        try {
+            $session = \Stripe\Checkout\Session::retrieve($sessionId);
+            return response()->json($session);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to retrieve session data: ' . $e->getMessage()], 400);
+        }
+    }
+
+
     public function success()
     {
         return view('checkout.success');

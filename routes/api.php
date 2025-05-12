@@ -74,3 +74,4 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 Route::post('/stripe/webhook', [CheckoutController::class, 'handleWebhook']);
+Route::get('/stripe/session/{sessionId}', [CheckoutController::class, 'getSessionDetails']);

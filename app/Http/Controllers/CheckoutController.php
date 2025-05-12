@@ -58,8 +58,8 @@ class CheckoutController extends Controller
                 'success_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/success',
                 'cancel_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/cancel',
                 'metadata' => [
-                    'user_id' => $userId, 
-                    'event_ids' => json_encode(array_column($cartItems, 'event_id')), 
+                    'user_id' => (string) $userId, 
+                    'event_ids' => implode(',', array_column($cartItems, 'event_id')), 
                 ],
             ]);
             
@@ -90,12 +90,14 @@ class CheckoutController extends Controller
             $session = $event->data->object;
 
             $userId = $session->metadata->user_id ?? null;
-            $eventIds = json_decode($session->metadata->event_ids ?? '[]');
+            $eventIdsString = $session->metadata->event_ids ?? '';
+            $eventIds = array_filter(explode(',', $eventIdsString));
 
             if (!$userId || empty($eventIds)) {
                 \Log::error("Missing userId or eventIds", [
                     'user_id' => $userId,
-                    'event_ids' => $eventIds
+                    'event_ids_raw' => $session->metadata->event_ids ?? null,
+                    'event_ids_parsed' => $eventIds,
                 ]);
                 return response()->json(['error' => 'Missing userId or eventIds'], 400);
             }

@@ -15,6 +15,7 @@
             try {
                 const userId = localStorage.getItem('user_id'); 
                 const eventId = localStorage.getItem('event_id'); 
+                const eventIds = JSON.parse(localStorage.getItem('event_ids') || '[]');
 
                 console.log("User ID from localStorage: ", userId);
                 console.log("Event ID from localStorage: ", eventId);

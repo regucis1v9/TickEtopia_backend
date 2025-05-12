@@ -57,7 +57,7 @@ Route::get('/ticket-histories', [TicketHistoryController::class, 'index'])->midd
 Route::post('/ticket-histories', [TicketHistoryController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/ticket-histories/create-after-payment', [TicketHistoryController::class, 'createTicketAfterPayment']);
 // User access to their own ticket history
-Route::get('/user-ticket-history', [TicketHistoryController::class, 'getUserHistory']);
+Route::get('/user-ticket-history', [TicketHistoryController::class, 'getUserHistory'])->middleware('auth:sanctum');
 
 Route::get('/generate-ticket/{ticketId}', [TicketController::class, 'generateTicket']);
 Route::post('/ticket/create', [TicketController::class, 'createTicket']);

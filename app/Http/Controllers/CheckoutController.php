@@ -100,15 +100,31 @@ class CheckoutController extends Controller
                 return response()->json(['error' => 'Missing userId or eventIds'], 400);
             }
 
+            // Get the "Purchased" status ID
+            $purchasedStatusId = \App\Models\TicketStatus::where('name', 'Purchased')->first()?->id;
+            if (!$purchasedStatusId) {
+                \Log::error("'Purchased' status not found in ticket_statuses table");
+                $purchasedStatusId = 1; // Fallback to ID 1
+            }
+
             foreach ($eventIds as $eventId) {
-                \App\Models\Ticket::create([
+                // Create ticket
+                $ticket = \App\Models\Ticket::create([
                     'user_id' => $userId,
                     'event_id' => $eventId,
                     'ticket_number' => 'TICKET-' . strtoupper(uniqid())
                 ]);
+                
+                // Create ticket history record
+                \App\Models\TicketHistory::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id' => $userId,
+                    'status_id' => $purchasedStatusId,
+                    'description' => 'Ticket purchased via Stripe payment'
+                ]);
             }
 
-            \Log::info("Tickets created for user $userId for events: " . implode(', ', $eventIds));
+            \Log::info("Tickets and history records created for user $userId for events: " . implode(', ', $eventIds));
         }
 
         return response()->json(['status' => 'success']);

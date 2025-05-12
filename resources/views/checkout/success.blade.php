@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         setTimeout(function () {
-            window.location.href = "http://localhost:3000";
+            window.location.href = "https://ticketopia-frontend.vercel.app";
         }, 10000);
 
         async function generateTicket() {
@@ -24,7 +24,7 @@
                     return;
                 }
 
-                const response = await fetch('http://127.0.0.1:8000/generate-ticket', {
+                const response = await fetch('https://ticketopia-backend-main-dc9cem.laravel.cloud/api/generate-ticket', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

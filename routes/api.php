@@ -54,6 +54,9 @@ Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('che
 
 Route::get('/ticket-histories', [TicketHistoryController::class, 'index']);
 Route::post('/ticket-histories', [TicketHistoryController::class, 'store']);
+Route::post('/ticket-histories/create-after-payment', [TicketHistoryController::class, 'createTicketAfterPayment']);
+// Add the new route for getting user purchase history
+Route::get('/user-ticket-history', [TicketHistoryController::class, 'getUserHistory'])->middleware('auth:sanctum');
 
 Route::get('/generate-ticket/{ticketId}', [TicketController::class, 'generateTicket']);
 Route::post('/ticket/create', [TicketController::class, 'createTicket']);

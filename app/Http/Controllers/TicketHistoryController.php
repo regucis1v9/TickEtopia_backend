@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\TicketHistory;
 use App\Models\TicketStatus;
+use App\Models\Ticket;
+use App\Models\User;
+use App\Models\Event;
 use Illuminate\Http\Request;
 
 class TicketHistoryController extends Controller
@@ -59,5 +62,27 @@ class TicketHistoryController extends Controller
     public function index()
     {
         return TicketHistory::with(['ticket', 'user', 'status'])->get();
+    }
+    
+    // New method to get purchase history for a specific user
+    public function getUserHistory(Request $request)
+    {
+        $userId = $request->user()->id;
+        
+        $history = TicketHistory::with([
+                'ticket', 
+                'status',
+                'ticket.event' => function($query) {
+                    $query->select('id', 'name', 'description', 'image_url');
+                }
+            ])
+            ->where('user_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        return response()->json([
+            'status' => 'success',
+            'data' => $history
+        ]);
     }
 }

@@ -19,60 +19,59 @@ class CheckoutController extends Controller
     }
 
     public function createCheckoutSession(Request $request)
-    {
-        try {
-            Stripe::setApiKey($this->stripeSecret);
+{
+    try {
+        Stripe::setApiKey($this->stripeSecret);
 
-            $cartItems = $request->input('cartItems', []);
-            $userId = $request->input('user_id');
+        $cartItems = $request->input('cartItems', []);
+        $userId = $request->input('user_id');
 
-            if (empty($cartItems)) {
-                return response()->json(['error' => 'Cart is empty'], 400);
-            }
-
-            $lineItems = [];
-
-            foreach ($cartItems as $item) {
-                $lineItems[] = [
-                    'price_data' => [
-                        'currency' => 'usd',
-                        'product_data' => [
-                            'name' => $item['event_name'],
-                            'description' => $item['event_description'] ?? 'No description available',
-                            'images' => !empty($item['event_image']) ? [$item['event_image']] : [],
-                        ],
-                        'unit_amount' => $item['price'],
-                    ],
-                    'quantity' => $item['quantity'],
-                ];
-            }
-
-            \Log::info('Creating Stripe Checkout session', [
-                'user_id' => $userId,
-                'cartItems' => $cartItems
-            ]);
-            
-            $checkout_session = Session::create([
-                'line_items' => $lineItems,
-                'mode' => 'payment',
-                'success_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/success',
-                'cancel_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/cancel',
-                'metadata' => [
-                    'user_id' => (string) $userId, 
-                    'event_ids' => implode(',', array_column($cartItems, 'event_id')), 
-                ],
-            ]);
-            
-            \Log::info('Stripe session created:', $checkout_session->toArray());
-            \Log::info('Checkout session ID', ['id' => $checkout_session->id]);
-
-
-            return response()->json(['url' => $checkout_session->url]);
-
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+        if (empty($cartItems)) {
+            return response()->json(['error' => 'Cart is empty'], 400);
         }
+
+        // Build proper indexed array
+        $lineItems = array_map(function ($item) {
+            return [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => $item['event_name'],
+                        'description' => $item['event_description'] ?? 'No description available',
+                        'images' => !empty($item['event_image']) ? [$item['event_image']] : [],
+                    ],
+                    'unit_amount' => (int) $item['price'],
+                ],
+                'quantity' => (int) $item['quantity'],
+            ];
+        }, array_values($cartItems)); // <-- force numeric keys
+
+        \Log::info('Creating Stripe Checkout session', [
+            'user_id' => $userId,
+            'cartItems' => $cartItems,
+            'lineItems' => $lineItems
+        ]);
+
+        $checkout_session = Session::create([
+            'line_items' => $lineItems,
+            'mode' => 'payment',
+            'success_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/success',
+            'cancel_url' => 'https://ticketopia-backend-main-dc9cem.laravel.cloud/checkout/cancel',
+            'metadata' => [
+                'user_id' => (string) $userId,
+                'event_ids' => implode(',', array_column($cartItems, 'event_id')),
+            ],
+        ]);
+
+        \Log::info('Stripe session created:', $checkout_session->toArray());
+
+        return response()->json(['url' => $checkout_session->url]);
+
+    } catch (\Exception $e) {
+        \Log::error('Stripe Checkout creation failed', ['message' => $e->getMessage()]);
+        return response()->json(['error' => $e->getMessage()], 500);
     }
+}
 
     public function handleWebhook(Request $request)
     {

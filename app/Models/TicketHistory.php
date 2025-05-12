@@ -18,4 +18,9 @@ class TicketHistory extends Model
     public function ticket() {
         return $this->belongsTo(Ticket::class);
     }
+
+    public function status()
+    {
+        return $this->belongsTo(TicketStatus::class, 'status_id');
+    }
 }

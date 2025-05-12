@@ -11,46 +11,48 @@
             window.location.href = "https://ticketopia-frontend.vercel.app";
         }, 10000);
 
-        async function generateTicket() {
+        async function recordTicketHistory() {
             try {
-                const userId = localStorage.getItem('user_id'); 
-                const eventId = localStorage.getItem('event_id'); 
+                const userId = localStorage.getItem('user_id');
                 const eventIds = JSON.parse(localStorage.getItem('event_ids') || '[]');
 
                 console.log("User ID from localStorage: ", userId);
-                console.log("Event ID from localStorage: ", eventId);
+                console.log("Event IDs from localStorage: ", eventIds);
 
-                if (!userId || !eventId) {
-                    console.error('Missing userId or eventId');
+                if (!userId || !Array.isArray(eventIds) || eventIds.length === 0) {
+                    console.error('Missing userId or eventIds');
                     return;
                 }
 
-                const response = await fetch('https://ticketopia-backend-main-dc9cem.laravel.cloud/api/generate-ticket', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        event_id: eventId
-                    })
-                });
+                // Loop through each eventId to create ticket history
+                for (const eventId of eventIds) {
+                    const response = await fetch('https://ticketopia-backend-main-dc9cem.laravel.cloud/api/ticket-histories/create-after-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'  // Add CSRF token if needed
+                        },
+                        body: JSON.stringify({
+                            user_id: userId,
+                            event_id: eventId
+                        })
+                    });
 
-                const data = await response.json();
-
-                if (response.ok && data.pdf_url) {
-                    console.log('Ticket generated:', data);
-                    window.location.href = data.pdf_url;
-                } else {
-                    console.error('Error response from server:', data);
+                    const data = await response.json();
+                    if (response.ok && data.pdf_url) {
+                        console.log(`Ticket created for event ${eventId}:`, data);
+                        window.open(data.pdf_url, '_blank'); // Open the generated ticket PDF
+                    } else {
+                        console.error(`Error creating ticket for event ${eventId}:`, data);
+                    }
                 }
             } catch (error) {
-                console.error('Error generating ticket:', error);
+                console.error('Error recording ticket history:', error);
             }
         }
 
-        generateTicket();
+        // Call the function to record ticket history after success
+        recordTicketHistory();
     </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');

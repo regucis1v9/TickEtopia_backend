@@ -142,7 +142,7 @@ class TicketHistoryController extends Controller
                     'ticket', 
                     'status',
                     'ticket.event' => function($query) {
-                        $query->select('id', 'name', 'description', 'image_url');
+                        $query->select('id', 'title as name', 'description', 'image as image_url');
                     }
                 ])
                 ->where('user_id', $userId)

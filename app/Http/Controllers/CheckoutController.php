@@ -93,6 +93,11 @@ class CheckoutController extends Controller
             $eventIdsString = $session->metadata->event_ids ?? '';
             $eventIds = array_filter(explode(',', $eventIdsString));
 
+            \Log::info('Webhook received - session metadata', [
+                'metadata' => $session->metadata,
+                'full_session' => $session,
+            ]);
+
             if (!$userId || empty($eventIds)) {
                 \Log::error("Missing userId or eventIds", [
                     'user_id' => $userId,

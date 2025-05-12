@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Ticket;
 use App\Models\TicketHistory;
 use App\Models\TicketStatus;
-use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Event;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class TicketHistoryController extends Controller
 {
@@ -27,57 +29,100 @@ class TicketHistoryController extends Controller
 
     public function createTicketAfterPayment(Request $request)
     {
+        // Enable detailed error logging
+        Log::setDefaultDriver('daily');
+        Log::info('Ticket Creation Attempt', [
+            'request_data' => $request->all(),
+            'headers' => $request->headers->all()
+        ]);
+
         try {
-            $userId = $request->input('user_id');
-            $eventId = $request->input('event_id');
-
-            // Validate user and event
-            $user = User::findOrFail($userId);
-            $event = Event::findOrFail($eventId);
-
-            // Generate unique ticket number
-            $ticketNumber = 'TICKET-' . strtoupper(uniqid());
-
-            // Create ticket
-            $ticket = Ticket::create([
-                'user_id' => $user->id,
-                'event_id' => $event->id,
-                'ticket_number' => $ticketNumber
+            // Validate incoming request
+            $validatedData = $request->validate([
+                'user_id' => 'required|exists:users,id',
+                'event_id' => 'required|exists:events,id'
             ]);
 
-            // Get or create 'Purchased' status
-            $purchasedStatus = TicketStatus::firstOrCreate(
-                ['name' => 'Purchased'],
-                ['description' => 'Ticket has been purchased']
-            );
+            // Start database transaction for atomicity
+            return DB::transaction(function () use ($validatedData) {
+                $userId = $validatedData['user_id'];
+                $eventId = $validatedData['event_id'];
 
-            // Create ticket history
-            $ticketHistory = TicketHistory::create([
-                'ticket_id' => $ticket->id,
-                'user_id' => $user->id,
-                'status_id' => $purchasedStatus->id,
-                'description' => 'Ticket purchased via Stripe payment'
-            ]);
+                // Detailed logging of validation
+                Log::info('Validated Data', [
+                    'user_id' => $userId,
+                    'event_id' => $eventId
+                ]);
 
-            // Generate PDF URL (assuming you have a route for this)
-            $pdfUrl = route('generate.ticket', ['ticketId' => $ticket->id]);
+                // Verify user and event exist
+                $user = User::findOrFail($userId);
+                $event = Event::findOrFail($eventId);
 
-            return response()->json([
-                'status' => 'success',
-                'ticket_id' => $ticket->id,
-                'pdf_url' => $pdfUrl
-            ]);
+                // Generate unique ticket number
+                $ticketNumber = 'TICKET-' . strtoupper(uniqid());
 
-        } catch (\Exception $e) {
-            Log::error('Ticket creation failed', [
-                'user_id' => $userId ?? 'N/A',
-                'event_id' => $eventId ?? 'N/A',
-                'error' => $e->getMessage()
+                // Create ticket
+                $ticket = Ticket::create([
+                    'user_id' => $user->id,
+                    'event_id' => $event->id,
+                    'ticket_number' => $ticketNumber
+                ]);
+
+                // Get or create 'Purchased' status
+                $purchasedStatus = TicketStatus::firstOrCreate(
+                    ['name' => 'Purchased'],
+                    ['description' => 'Ticket has been purchased']
+                );
+
+                // Create ticket history
+                $ticketHistory = TicketHistory::create([
+                    'ticket_id' => $ticket->id,
+                    'user_id' => $user->id,
+                    'status_id' => $purchasedStatus->id,
+                    'description' => 'Ticket purchased via Stripe payment'
+                ]);
+
+                // Log successful creation
+                Log::info('Ticket and History Created Successfully', [
+                    'ticket_id' => $ticket->id,
+                    'history_id' => $ticketHistory->id
+                ]);
+
+                // Generate PDF URL (adjust route name as needed)
+                $pdfUrl = route('generate.ticket', ['ticketId' => $ticket->id]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'ticket_id' => $ticket->id,
+                    'pdf_url' => $pdfUrl
+                ]);
+            });
+
+        } catch (\Illuminate\Validation\ValidationException $validationError) {
+            // Log validation errors
+            Log::error('Validation Error', [
+                'errors' => $validationError->errors(),
+                'input' => $request->all()
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to create ticket: ' . $e->getMessage()
+                'message' => 'Validation failed',
+                'errors' => $validationError->errors()
+            ], 422);
+
+        } catch (\Exception $e) {
+            // Log any unexpected errors
+            Log::error('Ticket Creation Failed', [
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString(),
+                'input' => $request->all()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create ticket: ' . $e->getMessage(),
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ], 500);
         }
     }

@@ -67,24 +67,30 @@ class TicketHistoryController extends Controller
     // New method to get purchase history for a specific user
     public function getUserHistory(Request $request)
     {
-        $userId = $request->user()->id;
-        
-        $history = TicketHistory::with([
-                'ticket', 
-                'status',
-                'ticket.event' => function($query) {
-                    $query->select('id', 'name', 'description', 'image_url');
-                }
-            ])
-            ->where('user_id', $userId)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        \Log::info('User History:', $history->toArray());
+        try {
+            $userId = $request->user()->id;
             
-        return response()->json([
-            'status' => 'success',
-            'data' => $history
-        ]);
+            $history = TicketHistory::with([
+                    'ticket', 
+                    'status',
+                    'ticket.event' => function($query) {
+                        $query->select('id', 'name', 'description', 'image_url');
+                    }
+                ])
+                ->where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->get();
+            
+            return response()->json([
+                'status' => 'success',
+                'data' => $history
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Error fetching user history: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch history: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Ticket;
 use App\Models\TicketHistory;
 use App\Models\TicketStatus;
+use App\Models\User;
+use App\Models\Event;
+use Exception;
 
 class CheckoutController extends Controller
 {
@@ -79,102 +82,139 @@ class CheckoutController extends Controller
 
     public function handleWebhook(Request $request)
     {
-        Stripe::setApiKey($this->stripeSecret);
-
-        $payload = @file_get_contents("php://input");
-        $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
-        $endpoint_secret = $this->stripeWebhookSecret;
-
         try {
-            $event = \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
-        } catch (\Exception $e) {
-            Log::error('Webhook error: ' . $e->getMessage());
-            return response()->json(['error' => 'Webhook error: ' . $e->getMessage()], 400);
-        }
+            Stripe::setApiKey($this->stripeSecret);
 
-        if ($event->type === 'checkout.session.completed') {
-            $session = $event->data->object;
+            $payload = @file_get_contents("php://input");
+            $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
+            $endpoint_secret = $this->stripeWebhookSecret;
 
-            // More robust metadata extraction
-            $userId = null;
-            $eventIds = [];
-
-            // Safely extract user_id
-            if (isset($session->metadata->user_id)) {
-                $userId = $session->metadata->user_id;
-            } elseif (isset($session->customer_details->email)) {
-                // Fallback: try to find user by email
-                $user = \App\Models\User::where('email', $session->customer_details->email)->first();
-                $userId = $user ? $user->id : null;
+            try {
+                $event = \Stripe\Webhook::constructEvent($payload, $sig_header, $endpoint_secret);
+            } catch (Exception $e) {
+                Log::error('Webhook verification failed: ' . $e->getMessage());
+                return response()->json(['error' => 'Webhook verification failed'], 400);
             }
 
-            // Safely extract event_ids
-            if (isset($session->metadata->event_ids)) {
-                $eventIds = array_filter(explode(',', $session->metadata->event_ids));
-            }
+            if ($event->type === 'checkout.session.completed') {
+                $session = $event->data->object;
 
-            // Extensive logging for debugging
-            Log::info('Webhook Metadata Processing', [
-                'raw_metadata' => $session->metadata ?? 'No metadata',
-                'extracted_user_id' => $userId,
-                'extracted_event_ids' => $eventIds,
-                'customer_email' => $session->customer_details->email ?? 'No email',
-            ]);
-
-            // Validate extracted data
-            if (!$userId) {
-                Log::error("Unable to determine user ID", [
-                    'session_data' => $session,
+                // Detailed logging of session data
+                Log::info('Stripe Checkout Session Received', [
+                    'session_id' => $session->id,
+                    'metadata' => $session->metadata ?? 'No metadata',
+                    'customer_email' => $session->customer_details->email ?? 'No email',
                 ]);
-                return response()->json(['error' => 'Cannot determine user'], 400);
-            }
 
-            if (empty($eventIds)) {
-                Log::error("No event IDs found", [
-                    'session_data' => $session,
-                ]);
-                return response()->json(['error' => 'No events to process'], 400);
-            }
+                // Extract user and event information
+                $userEmail = $session->customer_details->email ?? null;
+                $userId = null;
+                $eventIds = [];
 
-            // Get the "Purchased" status ID
-            $purchasedStatusId = TicketStatus::where('name', 'Purchased')->first()?->id ?? 1;
-
-            // Process each event
-            foreach ($eventIds as $eventId) {
-                try {
-                    // Create ticket
-                    $ticket = Ticket::create([
-                        'user_id' => $userId,
-                        'event_id' => $eventId,
-                        'ticket_number' => 'TICKET-' . strtoupper(uniqid())
-                    ]);
-                    
-                    // Create ticket history record
-                    TicketHistory::create([
-                        'ticket_id' => $ticket->id,
-                        'user_id' => $userId,
-                        'status_id' => $purchasedStatusId,
-                        'description' => 'Ticket purchased via Stripe payment'
-                    ]);
-
-                    Log::info("Ticket created", [
-                        'ticket_id' => $ticket->id,
-                        'user_id' => $userId,
-                        'event_id' => $eventId,
-                    ]);
-                } catch (\Exception $e) {
-                    Log::error("Failed to create ticket for event", [
-                        'event_id' => $eventId,
-                        'user_id' => $userId,
-                        'error' => $e->getMessage(),
-                    ]);
+                // Try to find user by email
+                if ($userEmail) {
+                    $user = User::where('email', $userEmail)->first();
+                    $userId = $user ? $user->id : null;
                 }
+
+                // Fallback to metadata user_id
+                if (!$userId && isset($session->metadata->user_id)) {
+                    $userId = $session->metadata->user_id;
+                }
+
+                // Extract event IDs
+                if (isset($session->metadata->event_ids)) {
+                    $eventIds = array_filter(explode(',', $session->metadata->event_ids));
+                }
+
+                // Validate user and events
+                if (!$userId) {
+                    Log::error('No user found for webhook', [
+                        'email' => $userEmail,
+                        'session_metadata' => $session->metadata,
+                    ]);
+                    return response()->json(['error' => 'User not found'], 400);
+                }
+
+                if (empty($eventIds)) {
+                    Log::error('No event IDs found in webhook', [
+                        'session_metadata' => $session->metadata,
+                    ]);
+                    return response()->json(['error' => 'No events to process'], 400);
+                }
+
+                // Ensure user exists
+                $user = User::findOrFail($userId);
+
+                // Get or create 'Purchased' status
+                $purchasedStatus = TicketStatus::firstOrCreate(
+                    ['name' => 'Purchased'],
+                    ['description' => 'Ticket has been purchased']
+                );
+
+                // Process each event
+                $createdTickets = [];
+                foreach ($eventIds as $eventId) {
+                    try {
+                        // Ensure event exists
+                        $event = Event::findOrFail($eventId);
+
+                        // Create ticket
+                        $ticket = Ticket::create([
+                            'user_id' => $userId,
+                            'event_id' => $eventId,
+                            'ticket_number' => 'TICKET-' . strtoupper(uniqid())
+                        ]);
+
+                        // Create ticket history
+                        $ticketHistory = TicketHistory::create([
+                            'ticket_id' => $ticket->id,
+                            'user_id' => $userId,
+                            'status_id' => $purchasedStatus->id,
+                            'description' => 'Ticket purchased via Stripe payment'
+                        ]);
+
+                        $createdTickets[] = $ticket->id;
+
+                        Log::info('Ticket and History Created', [
+                            'ticket_id' => $ticket->id,
+                            'user_id' => $userId,
+                            'event_id' => $eventId,
+                            'history_id' => $ticketHistory->id
+                        ]);
+                    } catch (Exception $eventError) {
+                        Log::error('Failed to process event ticket', [
+                            'event_id' => $eventId,
+                            'user_id' => $userId,
+                            'error' => $eventError->getMessage(),
+                            'trace' => $eventError->getTraceAsString()
+                        ]);
+                    }
+                }
+
+                // Final validation
+                if (empty($createdTickets)) {
+                    Log::error('No tickets were created', [
+                        'user_id' => $userId,
+                        'event_ids' => $eventIds,
+                    ]);
+                    return response()->json(['error' => 'Failed to create tickets'], 500);
+                }
+
+                return response()->json([
+                    'status' => 'success', 
+                    'created_tickets' => $createdTickets
+                ]);
             }
 
-            return response()->json(['status' => 'success']);
+            return response()->json(['status' => 'ignored']);
+        } catch (Exception $mainError) {
+            Log::error('Catastrophic webhook error', [
+                'error' => $mainError->getMessage(),
+                'trace' => $mainError->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Unexpected error'], 500);
         }
-
-        return response()->json(['status' => 'ignored']);
     }
 
     public function getSessionDetails($sessionId)

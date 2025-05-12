@@ -79,6 +79,8 @@ class TicketHistoryController extends Controller
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        \Log::info('User History:', $history->toArray());
             
         return response()->json([
             'status' => 'success',

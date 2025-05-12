@@ -14,4 +14,8 @@ class TicketHistory extends Model
     ];
 
     public $timestamps = true;
+
+    public function ticket() {
+        return $this->belongsTo(Ticket::class);
+    }
 }

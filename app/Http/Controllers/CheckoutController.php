@@ -64,6 +64,8 @@ class CheckoutController extends Controller
             ]);
             
             \Log::info('Stripe session created:', $checkout_session->toArray());
+            \Log::info('Checkout session ID', ['id' => $checkout_session->id]);
+
 
             return response()->json(['url' => $checkout_session->url]);
 
@@ -132,6 +134,8 @@ class CheckoutController extends Controller
             }
 
             \Log::info("Tickets and history records created for user $userId for events: " . implode(', ', $eventIds));
+            \Log::info('Webhook triggered for session', ['id' => $session->id]);
+
         }
 
         return response()->json(['status' => 'success']);

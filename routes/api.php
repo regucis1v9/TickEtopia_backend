@@ -52,10 +52,11 @@ Route::post('/create-checkout-session', [CheckoutController::class, 'createCheck
 Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::get('/checkout/cancel', [CheckoutController::class, 'cancel'])->name('checkout.cancel');
 
-Route::get('/ticket-histories', [TicketHistoryController::class, 'index']);
-Route::post('/ticket-histories', [TicketHistoryController::class, 'store']);
+// Admin access to all ticket histories
+Route::get('/ticket-histories', [TicketHistoryController::class, 'index'])->middleware('auth:sanctum');
+Route::post('/ticket-histories', [TicketHistoryController::class, 'store'])->middleware('auth:sanctum');
 Route::post('/ticket-histories/create-after-payment', [TicketHistoryController::class, 'createTicketAfterPayment']);
-// Add the new route for getting user purchase history
+// User access to their own ticket history
 Route::get('/user-ticket-history', [TicketHistoryController::class, 'getUserHistory'])->middleware('auth:sanctum');
 
 Route::get('/generate-ticket/{ticketId}', [TicketController::class, 'generateTicket']);

@@ -27,36 +27,59 @@ class TicketHistoryController extends Controller
 
     public function createTicketAfterPayment(Request $request)
     {
-        $userId = $request->user_id;
-        $eventId = $request->event_id;
+        try {
+            $userId = $request->input('user_id');
+            $eventId = $request->input('event_id');
 
-        $event = Event::findOrFail($eventId);
-        $user = User::findOrFail($userId);
+            // Validate user and event
+            $user = User::findOrFail($userId);
+            $event = Event::findOrFail($eventId);
 
-        $ticketNumber = 'TICKET-' . strtoupper(uniqid());
+            // Generate unique ticket number
+            $ticketNumber = 'TICKET-' . strtoupper(uniqid());
 
-        $ticket = Ticket::create([
-            'user_id' => $user->id,
-            'event_id' => $event->id,
-            'ticket_number' => $ticketNumber
-        ]);
+            // Create ticket
+            $ticket = Ticket::create([
+                'user_id' => $user->id,
+                'event_id' => $event->id,
+                'ticket_number' => $ticketNumber
+            ]);
 
-        $statusId = TicketStatus::where('name', 'Purchased')->first()?->id ?? 1;
+            // Get or create 'Purchased' status
+            $purchasedStatus = TicketStatus::firstOrCreate(
+                ['name' => 'Purchased'],
+                ['description' => 'Ticket has been purchased']
+            );
 
-        TicketHistory::create([
-            'ticket_id' => $ticket->id,
-            'user_id' => $user->id,
-            'status_id' => $statusId,
-            'description' => 'Ticket automatically added after Stripe payment'
-        ]);
+            // Create ticket history
+            $ticketHistory = TicketHistory::create([
+                'ticket_id' => $ticket->id,
+                'user_id' => $user->id,
+                'status_id' => $purchasedStatus->id,
+                'description' => 'Ticket purchased via Stripe payment'
+            ]);
 
-        $pdfUrl = route('generate.ticket', ['ticketId' => $ticket->id]);
+            // Generate PDF URL (assuming you have a route for this)
+            $pdfUrl = route('generate.ticket', ['ticketId' => $ticket->id]);
 
-        return response()->json([
-            'status' => 'success',
-            'pdf_url' => $pdfUrl,
-            'ticket_id' => $ticket->id,
-        ]);
+            return response()->json([
+                'status' => 'success',
+                'ticket_id' => $ticket->id,
+                'pdf_url' => $pdfUrl
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Ticket creation failed', [
+                'user_id' => $userId ?? 'N/A',
+                'event_id' => $eventId ?? 'N/A',
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to create ticket: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function index()
